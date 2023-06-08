@@ -121,7 +121,7 @@ class Trainer:
 
 
     def test(self, epoch, test_loader):
-        ckpt_path = 'CVAE.pt' if self.conditional else 'VAE.pt'  # path for saving models
+        ckpt_path = 'cvae.pt' if self.conditional else 'vae.pt'  # path for saving models
         # Loop through test set
         with torch.no_grad():
             for x, y in test_loader:
