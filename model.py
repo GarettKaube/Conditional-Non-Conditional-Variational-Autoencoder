@@ -10,6 +10,7 @@ import torchvision.transforms as transforms
 import torchvision.utils
 import numpy as np
 import matplotlib.pyplot as plt
+from utils import one_hot
 
 
 
@@ -59,6 +60,7 @@ class Decoder(nn.Module):
         self,
         latent_dim: int = 128,
         out_channels: int = 3,
+        conditional = False
         ):
         super(Decoder, self).__init__()
         self.latent_dim = latent_dim
@@ -74,6 +76,7 @@ class Decoder(nn.Module):
         self.tconv4 = nn.ConvTranspose2d(64, self.out_channels, 4, stride=2, padding=1)
         
     def forward(self, z):
+        
         z = F.relu(self.bn1(self.fc1(z)))
         z = z.view(-1, 448, 2, 2)
         z = F.relu(self.bn2(self.tconv1(z)))
@@ -95,7 +98,7 @@ class VAE(nn.Module):
         self.device = device
 
         self.encode = Encoder(conditional = False, latent_dim=latent_dim)
-        self.decode = Decoder(latent_dim=latent_dim)
+        self.decode = Decoder(conditional = False, latent_dim=latent_dim)
 
     def reparameterize(self, mu, log_var):
         """Reparameterization Tricks to sample latent vector z
@@ -133,7 +136,7 @@ class VAE(nn.Module):
         """
         
 
-        x = torch.randn(n_samples, self.latent_dim).to(self.device)
+        x = torch.randn(n_samples, self.latent_dim, device=self.device)
         x_reconstucted = self.decode(x)
         return x_reconstucted, None
 
@@ -147,9 +150,8 @@ class CVAE(nn.Module):
         self.img_size = img_size
         self.device = device
 
-
         self.encode = Encoder(conditional = True, latent_dim=latent_dim+num_classes, in_channels=3)
-        self.decode = Decoder(latent_dim=latent_dim+num_classes)
+        self.decode = Decoder(conditional = True, latent_dim=latent_dim+num_classes)
 
 
 
@@ -170,10 +172,16 @@ class CVAE(nn.Module):
             mu, log_var: mean and log(std) of z ~ N(mu, sigma^2)
             z: latent vector, z = mu + sigma * eps, acquired from reparameterization trick. 
         """
-        x = torch.cat((x, y), dim=3).to(self.device)
+
+        y_oh = one_hot(y, 9, self.device)
+        y_ = y_oh.view(x.shape[0], 1, 1, 10)*torch.ones((x.shape[0], x.shape[1], x.shape[2], 10)).to(self.device)
+
+        x = torch.cat((x, y_), dim=3).to(self.device)
         mu, log_var = self.encode(x)
+
+        z = self.reparameterize(mu[:,:self.latent_dim], log_var[:,:self.latent_dim])
         
-        z = self.reparameterize(mu[:,:self.latent_dim+self.num_classes], log_var[:,:self.latent_dim+self.num_classes])
+        z  = torch.cat((z, y_oh), dim=1).to(self.device)
         
         x_reconstucted = self.decode(z)
         
@@ -190,11 +198,15 @@ class CVAE(nn.Module):
             x_reconstucted : reconstructed image
             y: classes for xg. 
         """
-        y = torch.randint(low = 0, high = self.num_classes-1, size = n_samples).to(self.device)
-        x = torch.randn((n_samples, self.latent_dim)).to(self.device)
 
-        z = torch.concat([x,y], dim=1)
+        
 
+        x = torch.randn((n_samples, self.latent_dim),device=self.device).to(self.device)
+        y = torch.randint(low = 0, high = self.num_classes-1, size = (n_samples,),device=self.device).to(self.device)
+        y_oh = one_hot(y, 9, self.device)
+        
+        z = torch.cat([x,y_oh], dim=1)
+        
         x_reconstucted  = self.decode(z)
 
         
