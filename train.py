@@ -16,8 +16,8 @@ from plotting import plot_test, plot_image
 
 class Trainer:
     def __init__(self, 
-                 model, 
-                 lr, 
+                 model:torch.nn, 
+                 lr:float, 
                  loss, 
                  num_epoch, 
                  train_data,
@@ -87,8 +87,9 @@ class Trainer:
                     x = x.cuda()
                     y = y.cuda()
                 
-                y = one_hot(y, 9, self.device)
-                y = y.view(x.shape[0], 1, 1, 10)*torch.ones((x.shape[0], x.shape[1], x.shape[2], 10)).to('cuda')
+                if not self.conditional:
+                    y = one_hot(y, 9, self.device)
+                    y = y.view(x.shape[0], 1, 1, 10)*torch.ones((x.shape[0], x.shape[1], x.shape[2], 10)).to('cuda')
                 
 
                 # Train step
@@ -121,17 +122,18 @@ class Trainer:
 
 
     def test(self, epoch, test_loader):
-        ckpt_path = 'cvae.pt' if self.conditional else 'vae.pt'  # path for saving models
+        ckpt_path = './cvae.pt' if self.conditional else './vae.pt'  # path for saving models
         # Loop through test set
         with torch.no_grad():
             for x, y in test_loader:
                 if torch.cuda.is_available():
                     x = x.cuda()
                     y = y.cuda()
-                
-                y = one_hot(y, 9, self.device)
 
-                y = y.view(x.shape[0], 1, 1, 10)*torch.ones((x.shape[0], x.shape[1], x.shape[2], 10)).to(self.device)    
+                if not self.conditional:
+                    y = one_hot(y, 9, self.device)
+                    y = y.view(x.shape[0], 1, 1, 10)*torch.ones((x.shape[0], x.shape[1], x.shape[2], 10)).to('cuda')
+                
                 xg, mu, log_var, _ = self.model(x, y)
 
                 loss, mse, bce_loss, ssim_loss, kldiv_loss = self.loss.compute_loss(x, xg, mu, log_var)
@@ -156,14 +158,16 @@ class Trainer:
                 x = x.cuda()
                 y = y.cuda()
 
-            y = one_hot(y, 9, self.device)
-            y = y.view(x.shape[0], 1, 1, 10)*torch.ones((x.shape[0], x.shape[1], x.shape[2], 10)).to(self.device) 
+             
 
             x_reconstucted , _, _, _ = self.model(x, y)
            
             # Visualize
             x_reconstucted  = denormalize(x_reconstucted )
             x = denormalize(x)
+
+            y = one_hot(y, 9, self.device)
+            y = y.view(x.shape[0], 1, 1, 10)*torch.ones((x.shape[0], x.shape[1], x.shape[2], 10)).to(self.device)
 
             y = torch.max(torch.max(torch.argmax(y, dim=3),dim = 2)[0], dim=1)[0]
             
