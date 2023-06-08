@@ -87,10 +87,10 @@ def main():
 
     if conditional:
         # contidtional variational autoencoder 
-        model = CVAE(latent_dim=latent_dim)
+        model = CVAE(latent_dim=latent_dim, device=device)
     else:
         # variational autoencoder
-        model = VAE(latent_dim=latent_dim)
+        model = VAE(latent_dim=latent_dim, device=device)
 
     model.to(device)
 
@@ -116,13 +116,16 @@ def main():
     trainer.train(print_every, kl_annealing)
     
     if conditional:
-        model = CVAE(latent_dim=latent_dim)
+        model = CVAE(latent_dim=latent_dim, device = device)
     else:
-        model = VAE(latent_dim=latent_dim)
-    if torch.cuda.is_available():
-        model = model.cuda()
+        model = VAE(latent_dim=latent_dim, device = device)
+    
+
+    model.to(device)
+
     ckpt = torch.load(name+'.pt')
     model.load_state_dict(ckpt)
+
 
     # Generate 20 random images
     x_reconstucted, y = model.generate(20)
