@@ -74,17 +74,15 @@ class Decoder(nn.Module):
         self.bn3 = nn.BatchNorm2d(num_features=128)
         self.tconv3 = nn.ConvTranspose2d(128, 64, 4, stride=2, padding=1)
         self.tconv4 = nn.ConvTranspose2d(64, self.out_channels, 4, stride=2, padding=1)
-        
+
+
     def forward(self, z):
-        
         z = F.relu(self.bn1(self.fc1(z)))
         z = z.view(-1, 448, 2, 2)
         z = F.relu(self.bn2(self.tconv1(z)))
         z = F.relu(self.bn3(self.tconv2(z)))
         z = F.relu(self.tconv3(z))
-        z = torch.sigmoid(self.tconv4(z))
-        
-        return z
+        return torch.sigmoid(self.tconv4(z))
     
 
 
@@ -109,33 +107,27 @@ class VAE(nn.Module):
         z = eps * log_var + mu
         return z
 
-    def forward(self, x, y):
 
+    def forward(self, x, y):
         """Forward for CVAE.
         Returns:
             x_reconstucted: reconstructed image from decoder.
             mu, log_var: mean and log(std) of z ~ N(mu, sigma^2)
-            z: latent vector, z = mu + sigma * eps, acquired from reparameterization trick. 
+            z: latent vector, z = mu + sigma * eps, from reparameterization trick. 
         """
         mu , log_var = self.encode(x)
         z = self.reparameterize(mu, log_var)
         x_reconstucted = self.decode(z)
         return x_reconstucted, mu, log_var, z
 
-    def generate(
-        self,
-        n_samples: int,
-        ):
 
-
+    def generate(self, n_samples: int,):
         """Randomly sample from the latent space and return
         the reconstructed samples.
         Returns:
             x_reconstucted: reconstructed image
             None: a placeholder simply.
         """
-        
-
         x = torch.randn(n_samples, self.latent_dim, device=self.device)
         x_reconstucted = self.decode(x)
         return x_reconstucted, None
@@ -170,9 +162,8 @@ class CVAE(nn.Module):
         Returns:
             x_reconstucted: reconstructed image from decoder.
             mu, log_var: mean and log(std) of z ~ N(mu, sigma^2)
-            z: latent vector, z = mu + sigma * eps, acquired from reparameterization trick. 
+            z: latent vector, z = mu + sigma * eps, from reparameterization trick. 
         """
-
         y_oh = one_hot(y, 9, self.device)
         y_ = y_oh.view(x.shape[0], 1, 1, 10)*torch.ones((x.shape[0], x.shape[1], x.shape[2], 10)).to(self.device)
 
@@ -189,8 +180,7 @@ class CVAE(nn.Module):
         return x_reconstucted , mu, log_var, z
 
 
-    def generate(self,n_samples: int,y: torch.Tensor = None):
-
+    def generate(self, n_samples:int, y:torch.Tensor=None):
         """Randomly sample from the latent space and return
         the reconstructed samples.
         NOTE: Randomly generate some classes here, if not y is provided.
@@ -198,16 +188,12 @@ class CVAE(nn.Module):
             x_reconstucted : reconstructed image
             y: classes for xg. 
         """
-
-        
-
         x = torch.randn((n_samples, self.latent_dim),device=self.device).to(self.device)
-        y = torch.randint(low = 0, high = self.num_classes-1, size = (n_samples,),device=self.device).to(self.device)
+        if y is None:
+            y = torch.randint(low = 0, high = self.num_classes-1, size = (n_samples,),device=self.device).to(self.device)
+
         y_oh = one_hot(y, 9, self.device)
-        
         z = torch.cat([x,y_oh], dim=1)
-        
         x_reconstucted  = self.decode(z)
 
-        
         return x_reconstucted , y
